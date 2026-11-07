@@ -1,0 +1,44 @@
+name: Sentinel vNext WebAssembly & Web Client CI
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'core-engine/**'
+      - 'web-client/**'
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-wasm-module:
+    name: Build WASM Target & Web Client
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust Toolchain for WASM
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: Build WASM Packages for Web
+        run: |
+          cd core-engine
+          wasm-pack build --target web --out-dir ../web-client/src/pkg
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: web-client/package-lock.json
+
+      - name: Build Web Client Bundle
+        run: |
+          cd web-client
+          npm ci
+          npm run build
